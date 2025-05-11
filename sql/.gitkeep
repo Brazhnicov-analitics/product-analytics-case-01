@@ -1,4 +1,4 @@
-Создание таблицы Metrics
+-- Создание таблицы Metrics
 CREATE TABLE Metrics (
     visit_date TEXT,
     region TEXT,
@@ -91,4 +91,3 @@ INSERT INTO Metrics (visit_date, region, category, visits, bounce_rate, avg_dept
 ('2025-04-01', 'Екатеринбург', 'Карты', 2500, 54, 2, 91, ABS(RANDOM()) % 1000 + 1, 250.0, 125),
 ('2025-04-01', 'Екатеринбург', 'Музыка', 3000, 63, 1, 74, ABS(RANDOM()) % 1000 + 1, 300.0, 150),
 ('2025-04-01', 'Екатеринбург', 'Такси', 1500, 60, 2, 110, ABS(RANDOM()) % 1000 + 1, 150.0, 75);
-
