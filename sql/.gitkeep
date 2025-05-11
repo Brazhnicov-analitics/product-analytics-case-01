@@ -91,3 +91,71 @@ INSERT INTO Metrics (visit_date, region, category, visits, bounce_rate, avg_dept
 ('2025-04-01', 'Екатеринбург', 'Карты', 2500, 54, 2, 91, ABS(RANDOM()) % 1000 + 1, 250.0, 125),
 ('2025-04-01', 'Екатеринбург', 'Музыка', 3000, 63, 1, 74, ABS(RANDOM()) % 1000 + 1, 300.0, 150),
 ('2025-04-01', 'Екатеринбург', 'Такси', 1500, 60, 2, 110, ABS(RANDOM()) % 1000 + 1, 150.0, 75);
+
+-- Создаём таблицу для Retention Rate
+CREATE TABLE RetentionRate AS
+WITH MonthlyVisits AS (
+    SELECT 
+        strftime('%Y-%m', visit_date) AS month,
+        SUM(visits) AS total_visits
+    FROM Metrics
+    GROUP BY month
+),
+LaggedVisits AS (
+    SELECT 
+        month,
+        total_visits,
+        LAG(total_visits) OVER (ORDER BY month) AS previous_visits
+    FROM MonthlyVisits
+)
+SELECT 
+    month,
+    total_visits,
+    previous_visits,
+    ROUND(
+        CASE 
+            WHEN previous_visits > 0 THEN (total_visits * 1.0 / previous_visits) * 100 
+            ELSE NULL 
+        END, 2
+    ) AS retention_rate
+FROM LaggedVisits;
+
+-- Создаём таблицу для DAU/WAU/MAU
+CREATE TABLE ActiveUsers AS
+SELECT 
+    visit_date,
+    region,
+    category,
+    visits / 1.0 AS dau, -- Упрощённый DAU (среднее за день)
+    visits / 7.0 AS wau, -- Упрощённый WAU (среднее за неделю)
+    visits / 30.0 AS mau -- Упрощённый MAU (среднее за месяц)
+FROM Metrics;
+
+ALTER TABLE Metrics ADD COLUMN ltv REAL;
+UPDATE Metrics SET ltv = revenue * 10;
+
+ALTER TABLE Metrics ADD COLUMN conversion_rate REAL;
+UPDATE Metrics SET conversion_rate = ROUND((conversions * 1.0 / visits) * 100, 2);
+
+SELECT visit_date, region, category, visits, conversions, conversion_rate FROM Metrics LIMIT 10;
+UPDATE Metrics
+SET conversions = visits * 0.07,
+    conversion_rate = ROUND((visits * 0.07 / visits) * 100, 2)
+WHERE region = 'Москва' AND category = 'Поиск';
+UPDATE Metrics
+SET conversions = visits * 0.03,
+    conversion_rate = ROUND((visits * 0.03 / visits) * 100, 2)
+WHERE region = 'Санкт-Петербург' AND category = 'Карты';
+UPDATE Metrics
+SET conversions = visits * 0.06,
+    conversion_rate = ROUND((visits * 0.06 / visits) * 100, 2)
+WHERE region = 'Екатеринбург' AND category = 'Музыка';
+UPDATE Metrics
+SET conversions = visits * 0.04,
+    conversion_rate = ROUND((visits * 0.04 / visits) * 100, 2)
+WHERE (region, category) NOT IN (
+    ('Москва', 'Поиск'),
+    ('Санкт-Петербург', 'Карты'),
+    ('Екатеринбург', 'Музыка')
+);
+SELECT region, category, visits, conversions, conversion_rate FROM Metrics LIMIT 20;
